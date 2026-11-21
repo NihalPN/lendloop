@@ -1,0 +1,26 @@
+services:
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    container_name: lendloop-n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_HOST=localhost
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - NODE_ENV=production
+      - WEBHOOK_URL=http://localhost:5678/
+      - GENERIC_TIMEZONE=UTC
+      - NODE_FUNCTION_ALLOW_BUILTIN=crypto
+      - N8N_WEBHOOK_SECRET=${N8N_WEBHOOK_SECRET:-lendloop-webhook-secret}
+      - CONVEX_SITE_URL=${CONVEX_SITE_URL:-http://host.docker.internal:3211}
+      - LENDLOOP_WEBHOOK_SECRET=${N8N_WEBHOOK_SECRET:-lendloop-webhook-secret}
+      - LENDLOOP_API_SECRET=${N8N_API_SECRET:-lendloop-api-secret}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - n8n_data:/home/node/.n8n
+
+volumes:
+  n8n_data:
