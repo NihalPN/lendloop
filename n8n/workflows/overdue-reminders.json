@@ -1,0 +1,198 @@
+{
+  "name": "LendLoop Overdue Reminders",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 24
+            }
+          ]
+        }
+      },
+      "id": "1",
+      "name": "Daily Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [180, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\n\nconst secret = process.env.LENDLOOP_API_SECRET || process.env.N8N_API_SECRET || 'CHANGE_ME_N8N_API_SECRET';\nconst timestamp = Math.floor(Date.now() / 1000).toString();\nconst method = 'GET';\nconst path = '/overdue-loans?limit=100';\nconst rawBody = '';\n\nconst canonical = `${timestamp}.${method}.${path}.${rawBody}`;\nconst signature = crypto.createHmac('sha256', secret).update(canonical).digest('hex');\n\nconst baseUrl = process.env.CONVEX_SITE_URL || 'http://host.docker.internal:3211';\n\nreturn [{\n  json: {\n    url: `${baseUrl}${path}`,\n    headers: {\n      'Content-Type': 'application/json',\n      'X-LL-Timestamp': timestamp,\n      'X-LL-Signature': signature\n    }\n  }\n}];"
+      },
+      "id": "2",
+      "name": "Sign Overdue Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [400, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "X-LL-Timestamp",
+              "value": "={{ $json.headers['X-LL-Timestamp'] }}"
+            },
+            {
+              "name": "X-LL-Signature",
+              "value": "={{ $json.headers['X-LL-Signature'] }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "3",
+      "name": "GET /overdue-loans",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [620, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst loans = Array.isArray(response.loans) ? response.loans : [];\n\nif (loans.length === 0) {\n  return [];\n}\n\nconst today = new Date().toISOString().slice(0, 10);\n\nreturn loans.map((loan) => ({\n  json: {\n    loanId: loan.loanId,\n    toolName: loan.toolName,\n    dueDate: loan.dueDate,\n    daysOverdue: loan.daysOverdue,\n    borrowerEmail: loan.borrower ? loan.borrower.email : 'neighbor@example.com',\n    borrowerName: loan.borrower ? loan.borrower.name : 'Neighbor',\n    runDate: today,\n    idempotencyKey: `${loan.loanId}:${today}`\n  }\n}));"
+      },
+      "id": "4",
+      "name": "Unpack Overdue Loans",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [840, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nreturn [{\n  json: {\n    ...item,\n    emailNotification: {\n      to: item.borrowerEmail,\n      subject: `[LendLoop Reminder] Return tool: ${item.toolName}`,\n      body: `Hi ${item.borrowerName},\\n\\nThis is a friendly reminder that your loan for ${item.toolName} was due on ${item.dueDate} (${item.daysOverdue} days overdue).\\n\\nPlease return it to the owner as soon as possible so other neighbors can use it.`\n    }\n  }\n}];"
+      },
+      "id": "5",
+      "name": "Format Reminder Notification",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1060, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\n\nconst secret = process.env.LENDLOOP_API_SECRET || process.env.N8N_API_SECRET || 'CHANGE_ME_N8N_API_SECRET';\nconst item = $input.first().json;\n\nconst timestamp = Math.floor(Date.now() / 1000).toString();\nconst method = 'POST';\nconst path = '/reminder-result';\n\nconst payload = {\n  contractVersion: 'v1',\n  idempotencyKey: item.idempotencyKey,\n  loanId: item.loanId,\n  status: 'sent',\n  channel: 'email',\n  sentAt: new Date().toISOString(),\n  error: null\n};\n\nconst rawBody = JSON.stringify(payload);\nconst canonical = `${timestamp}.${method}.${path}.${rawBody}`;\nconst signature = crypto.createHmac('sha256', secret).update(canonical).digest('hex');\nconst baseUrl = process.env.CONVEX_SITE_URL || 'http://host.docker.internal:3211';\n\nreturn [{\n  json: {\n    url: `${baseUrl}${path}`,\n    body: payload,\n    rawBody,\n    headers: {\n      'Content-Type': 'application/json',\n      'X-LL-Timestamp': timestamp,\n      'X-LL-Signature': signature\n    }\n  }\n}];"
+      },
+      "id": "6",
+      "name": "Sign Reminder Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1280, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "X-LL-Timestamp",
+              "value": "={{ $json.headers['X-LL-Timestamp'] }}"
+            },
+            {
+              "name": "X-LL-Signature",
+              "value": "={{ $json.headers['X-LL-Signature'] }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body) }}",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "7",
+      "name": "POST /reminder-result",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1500, 300]
+    }
+  ],
+  "connections": {
+    "Daily Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Sign Overdue Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sign Overdue Request": {
+      "main": [
+        [
+          {
+            "node": "GET /overdue-loans",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET /overdue-loans": {
+      "main": [
+        [
+          {
+            "node": "Unpack Overdue Loans",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Unpack Overdue Loans": {
+      "main": [
+        [
+          {
+            "node": "Format Reminder Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Reminder Notification": {
+      "main": [
+        [
+          {
+            "node": "Sign Reminder Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sign Reminder Result": {
+      "main": [
+        [
+          {
+            "node": "POST /reminder-result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "errorWorkflow": "LendLoop Error Handler"
+  }
+}

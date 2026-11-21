@@ -1,0 +1,60 @@
+{
+  "name": "LendLoop Error Handler",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "1",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const execution = $input.first().json.execution;\nconst workflowName = execution.workflow ? execution.workflow.name : 'Unknown Workflow';\nconst lastNode = execution.lastNodeExecuted || 'Unknown Node';\nconst errorObj = execution.error || {};\nconst errorMessage = (errorObj.message || 'Unknown error occurred').slice(0, 300);\n\nreturn [{\n  json: {\n    workflow: workflowName,\n    executionId: execution.id || 'N/A',\n    failedNode: lastNode,\n    message: errorMessage,\n    occurredAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "2",
+      "name": "Format Error Alert",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "message": "=[LendLoop Automation Failure]\nWorkflow: {{ $json.workflow }}\nExecution ID: {{ $json.executionId }}\nFailed Node: {{ $json.failedNode }}\nOccurred At: {{ $json.occurredAt }}\nError: {{ $json.message }}"
+      },
+      "id": "3",
+      "name": "Log Error Diagnostic",
+      "type": "n8n-nodes-base.manualTriggerPrompt",
+      "typeVersion": 1,
+      "position": [680, 300]
+    }
+  ],
+  "connections": {
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Format Error Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Error Alert": {
+      "main": [
+        [
+          {
+            "node": "Log Error Diagnostic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
