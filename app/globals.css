@@ -1,0 +1,104 @@
+@import "tailwindcss";
+
+@theme {
+  --color-canvas: #F7F5F0;
+  --color-surface: #FFFFFF;
+  --color-border: #E2DDD5;
+  --color-ink: #1C1917;
+  --color-muted: #57534E;
+  --color-rust: #D95D39;
+  --color-trust: #2D6A4F;
+
+  --font-serif: "Georgia", "Times New Roman", serif;
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "Menlo", "Monaco", "Courier New", monospace;
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+}
+
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-canvas text-ink antialiased;
+    font-feature-settings: "cv01", "cv02", "cv03";
+    font-variant-numeric: tabular-nums;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: var(--font-serif);
+    font-weight: 700;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  button {
+    font-family: inherit;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-rust text-white font-mono text-xs uppercase tracking-wider px-4 py-2 border border-rust hover:bg-ink hover:text-white transition-colors duration-150 active:scale-[0.98];
+  }
+
+  .btn-outline {
+    @apply bg-transparent border-ink text-ink font-mono text-xs uppercase tracking-wider px-4 py-2 border border-ink hover:bg-ink hover:text-white transition-colors duration-150 active:scale-[0.98];
+  }
+
+  .badge-rust {
+    @apply bg-rust text-white font-mono text-[10px] uppercase tracking-wider px-2 py-0.5 border border-rust;
+  }
+
+  .badge-trust {
+    @apply bg-trust text-white font-mono text-[10px] uppercase tracking-wider px-2 py-0.5 border border-trust;
+  }
+
+  .badge-pending {
+    @apply border border-ink bg-transparent text-ink font-mono text-[10px] uppercase tracking-wider px-2 py-0.5;
+  }
+
+  .badge-overdue {
+    @apply border-rust bg-transparent text-rust font-mono text-[10px] uppercase tracking-wider px-2 py-0.5;
+  }
+
+  .tool-card {
+    @apply bg-surface border border-border rounded-sm p-4 hover:border-rust transition-colors duration-150;
+  }
+
+  .metric-card {
+    @apply bg-surface border border-border rounded-sm p-4;
+  }
+
+  .metric-card-overdue {
+    @apply bg-surface border-2 border-rust rounded-sm p-4;
+  }
+
+  .table-cell {
+    @apply border-b border-border p-3 text-xs font-mono;
+  }
+
+  .table-header {
+    @apply border-b border-border border-ink bg-canvas p-3 text-[10px] font-mono uppercase tracking-wider text-muted text-left;
+  }
+
+  .input-field {
+    @apply bg-canvas border border-border rounded-sm px-3 py-2 text-ink font-mono text-sm focus:outline-none focus:border-rust transition-colors duration-150;
+  }
+
+  .label {
+    @apply block text-[10px] font-mono uppercase tracking-wider text-muted mb-1;
+  }
+}
