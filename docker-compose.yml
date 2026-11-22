@@ -13,10 +13,7 @@ services:
       - WEBHOOK_URL=http://localhost:5678/
       - GENERIC_TIMEZONE=UTC
       - NODE_FUNCTION_ALLOW_BUILTIN=crypto
-      - N8N_WEBHOOK_SECRET=${N8N_WEBHOOK_SECRET:-lendloop-webhook-secret}
-      - CONVEX_SITE_URL=${CONVEX_SITE_URL:-http://host.docker.internal:3211}
-      - LENDLOOP_WEBHOOK_SECRET=${N8N_WEBHOOK_SECRET:-lendloop-webhook-secret}
-      - LENDLOOP_API_SECRET=${N8N_API_SECRET:-lendloop-api-secret}
+      - N8N_BLOCK_ENV_ACCESS_IN_NODE=true
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
