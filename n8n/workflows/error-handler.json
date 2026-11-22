@@ -1,52 +1,48 @@
 {
-  "name": "LendLoop Error Handler",
+  "name": "lendloop errorhandling",
   "nodes": [
     {
       "parameters": {},
-      "id": "1",
-      "name": "Error Trigger",
       "type": "n8n-nodes-base.errorTrigger",
       "typeVersion": 1,
-      "position": [240, 300]
+      "position": [
+        0,
+        0
+      ],
+      "id": "1e4f8b8c-7ef9-45c3-9444-ff5261e86274",
+      "name": "Error Trigger"
     },
     {
       "parameters": {
-        "jsCode": "const execution = $input.first().json.execution;\nconst workflowName = execution.workflow ? execution.workflow.name : 'Unknown Workflow';\nconst lastNode = execution.lastNodeExecuted || 'Unknown Node';\nconst errorObj = execution.error || {};\nconst errorMessage = (errorObj.message || 'Unknown error occurred').slice(0, 300);\n\nreturn [{\n  json: {\n    workflow: workflowName,\n    executionId: execution.id || 'N/A',\n    failedNode: lastNode,\n    message: errorMessage,\n    occurredAt: new Date().toISOString()\n  }\n}];"
+        "sendTo": "pkd22it045@gecskp.ac.in",
+        "subject": "=[LendLoop n8n ERROR] {{ $json.workflow.name }}",
+        "message": "=Workflow: {{ $json.workflow.name }} Failed Node: {{ $json.execution.lastNodeExecuted }} Error: {{ $json.execution.error.message }} Execution URL: {{ $json.execution.url }}",
+        "options": {}
       },
-      "id": "2",
-      "name": "Format Error Alert",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [460, 300]
-    },
-    {
-      "parameters": {
-        "message": "=[LendLoop Automation Failure]\nWorkflow: {{ $json.workflow }}\nExecution ID: {{ $json.executionId }}\nFailed Node: {{ $json.failedNode }}\nOccurred At: {{ $json.occurredAt }}\nError: {{ $json.message }}"
-      },
-      "id": "3",
-      "name": "Log Error Diagnostic",
-      "type": "n8n-nodes-base.manualTriggerPrompt",
-      "typeVersion": 1,
-      "position": [680, 300]
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        224,
+        0
+      ],
+      "id": "88e45ad9-645f-4310-9c71-b616cdb1dc19",
+      "name": "Send a message",
+      "webhookId": "0fa8e88b-f104-467d-a231-f1770839e72e",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "seQw1W6jH8ilyPft",
+          "name": "Gmail account"
+        }
+      }
     }
   ],
+  "pinData": {},
   "connections": {
     "Error Trigger": {
       "main": [
         [
           {
-            "node": "Format Error Alert",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Format Error Alert": {
-      "main": [
-        [
-          {
-            "node": "Log Error Diagnostic",
+            "node": "Send a message",
             "type": "main",
             "index": 0
           }
@@ -54,7 +50,17 @@
       ]
     }
   },
+  "active": true,
   "settings": {
-    "executionOrder": "v1"
-  }
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "bda7b70c-cc1e-49c3-84c3-60dbcfbe2b13",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "75c6c8341342b4966fae2ab79c141231a51dc0276f6c760d4e0acc6ea8021e8a"
+  },
+  "nodeGroups": [],
+  "id": "ZmXj5e8lZeSCHYoc",
+  "tags": []
 }

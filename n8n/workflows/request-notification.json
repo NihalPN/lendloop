@@ -1,243 +1,429 @@
 {
-  "name": "LendLoop Loan Events",
+  "name": "LENDLOOP 1",
   "nodes": [
     {
       "parameters": {
         "httpMethod": "POST",
         "path": "lendloop-loan-events",
-        "responseMode": "responseNode",
-        "options": {
-          "rawBody": true
-        }
+        "responseMode": "lastNode",
+        "options": {}
       },
-      "id": "1",
-      "name": "Webhook Inbound",
       "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2,
-      "position": [180, 300],
-      "webhookId": "lendloop-loan-events"
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "77175d16-32e5-4c69-b968-be15c618ec46",
+      "name": "Webhook",
+      "webhookId": "fd9f1cc1-ac2e-4c99-b0cd-8982979d27cc"
     },
     {
       "parameters": {
-        "jsCode": "const crypto = require('crypto');\n\nconst secret = process.env.LENDLOOP_WEBHOOK_SECRET || process.env.N8N_WEBHOOK_SECRET || 'CHANGE_ME_N8N_WEBHOOK_SECRET';\nconst item = $input.first().json;\nconst headers = item.headers || {};\nconst timestampHeader = headers['x-ll-timestamp'] || headers['x-timestamp'] || headers['X-LL-Timestamp'] || headers['X-Timestamp'];\nconst signatureHeader = headers['x-ll-signature'] || headers['x-signature'] || headers['X-LL-Signature'] || headers['X-Signature'];\nconst eventIdHeader = headers['x-ll-event-id'] || headers['x-event-id'] || headers['X-LL-Event-Id'] || headers['X-Event-Id'];\n\nif (!timestampHeader || !signatureHeader) {\n  throw new Error('Unauthorized: Missing signature or timestamp headers');\n}\n\nconst ts = Number(timestampHeader);\nconst nowSec = Math.floor(Date.now() / 1000);\nif (!Number.isFinite(ts) || Math.abs(nowSec - ts) > 300) {\n  throw new Error('Unauthorized: Timestamp outside 300s window');\n}\n\nconst rawBody = typeof item.rawBody === 'string' ? item.rawBody : JSON.stringify(item.body || {});\nconst method = 'POST';\nconst path = '/webhook/lendloop-loan-events';\nconst canonical = `${ts}.${method}.${path}.${rawBody}`;\nconst computedSig = crypto.createHmac('sha256', secret).update(canonical).digest('hex');\n\nconst sigBuffer = Buffer.from(String(signatureHeader).toLowerCase().trim(), 'hex');\nconst compBuffer = Buffer.from(computedSig, 'hex');\n\nif (sigBuffer.length !== 32 || compBuffer.length !== 32 || !crypto.timingSafeEqual(sigBuffer, compBuffer)) {\n  throw new Error('Unauthorized: HMAC signature mismatch');\n}\n\nconst parsed = typeof item.body === 'object' ? item.body : JSON.parse(rawBody);\nreturn [{\n  json: {\n    verified: true,\n    eventId: eventIdHeader || parsed.eventId,\n    type: parsed.type,\n    payload: parsed\n  }\n}];"
+        "jsCode": "const crypto = require('crypto');\n\nconst signatureHex = String($json.signatureHex || '').trim();\nconst expectedHex = String($json.expectedHex || '').trim();\n\nif (!/^[0-9a-f]{64}$/i.test(signatureHex)) {\n  throw new Error('Invalid webhook signature.');\n}\n\nconst sigBuf = Buffer.from(signatureHex, 'hex');\nconst expBuf = Buffer.from(expectedHex, 'hex');\n\nif (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {\n  throw new Error('Invalid webhook signature.');\n}\n\nreturn { json: $('Webhook').item.json };"
       },
-      "id": "2",
-      "name": "Verify HMAC Signature",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [400, 300]
+      "position": [
+        672,
+        0
+      ],
+      "id": "4db3049e-edea-4818-9487-75356f0e3621",
+      "name": "Code in JavaScript"
     },
     {
       "parameters": {
-        "dataType": "string",
-        "value1": "={{ $json.type }}",
         "rules": {
-          "rules": [
+          "values": [
             {
-              "value2": "loan.requested",
-              "outputKey": "loan.requested"
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 4
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.body.type }}",
+                    "rightValue": "loan.requested",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "254b3c48-bb0e-4c05-a4d3-0da0f9af0522"
+                  }
+                ],
+                "combinator": "and"
+              }
             },
             {
-              "value2": "loan.approved",
-              "outputKey": "loan.approved"
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 4
+                },
+                "conditions": [
+                  {
+                    "id": "f63d4af7-72eb-4398-920f-3578936c4b46",
+                    "leftValue": "={{ $json.body.type }}",
+                    "rightValue": "loan.approved",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
             },
             {
-              "value2": "loan.declined",
-              "outputKey": "loan.declined"
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 4
+                },
+                "conditions": [
+                  {
+                    "id": "b41a42b3-d60e-4ab0-9c15-cce5aba4e63f",
+                    "leftValue": "={{ $json.body.type }}",
+                    "rightValue": "loan.declined",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
             },
             {
-              "value2": "loan.cancelled",
-              "outputKey": "loan.cancelled"
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 4
+                },
+                "conditions": [
+                  {
+                    "id": "eacc14c0-d382-42cb-a3f3-54d91bcdcee7",
+                    "leftValue": "={{ $json.body.type }}",
+                    "rightValue": "loan.cancelled",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
             },
             {
-              "value2": "loan.returned",
-              "outputKey": "loan.returned"
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 4
+                },
+                "conditions": [
+                  {
+                    "id": "059804b7-8fb3-4361-b4a1-d11f30bef1d3",
+                    "leftValue": "={{ $json.body.type }}",
+                    "rightValue": "loan.returned",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
             }
           ]
-        }
-      },
-      "id": "3",
-      "name": "Route by Event Type",
-      "type": "n8n-nodes-base.switch",
-      "typeVersion": 3,
-      "position": [620, 300]
-    },
-    {
-      "parameters": {
-        "jsCode": "const p = $input.first().json.payload;\nreturn [{\n  json: {\n    to: p.recipient.email,\n    recipientName: p.recipient.name,\n    subject: `[LendLoop] New loan request: ${p.loan.toolName}`,\n    bodyText: `Hi ${p.recipient.name},\\n\\n${p.loan.borrowerName || 'A neighbor'} requested to borrow your ${p.loan.toolName} from ${p.loan.startDate} to ${p.loan.endDate}.\\n\\nPlease sign in to LendLoop to approve or decline this request.`\n  }\n}];"
-      },
-      "id": "4",
-      "name": "Format: loan.requested",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [880, 100]
-    },
-    {
-      "parameters": {
-        "jsCode": "const p = $input.first().json.payload;\nreturn [{\n  json: {\n    to: p.recipient.email,\n    recipientName: p.recipient.name,\n    subject: `[LendLoop] Request approved: ${p.loan.toolName}`,\n    bodyText: `Hi ${p.recipient.name},\\n\\nGood news! Your request to borrow ${p.loan.toolName} from ${p.loan.startDate} to ${p.loan.endDate} was approved by ${p.loan.ownerName || 'the owner'}.\\n\\nPlease coordinate pickup and remember to return it by ${p.loan.endDate}.`\n  }\n}];"
-      },
-      "id": "5",
-      "name": "Format: loan.approved",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [880, 220]
-    },
-    {
-      "parameters": {
-        "jsCode": "const p = $input.first().json.payload;\nreturn [{\n  json: {\n    to: p.recipient.email,\n    recipientName: p.recipient.name,\n    subject: `[LendLoop] Request declined: ${p.loan.toolName}`,\n    bodyText: `Hi ${p.recipient.name},\\n\\nYour request to borrow ${p.loan.toolName} for the period ${p.loan.startDate} to ${p.loan.endDate} was declined by the owner.`\n  }\n}];"
-      },
-      "id": "6",
-      "name": "Format: loan.declined",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [880, 340]
-    },
-    {
-      "parameters": {
-        "jsCode": "const p = $input.first().json.payload;\nreturn [{\n  json: {\n    to: p.recipient.email,\n    recipientName: p.recipient.name,\n    subject: `[LendLoop] Request cancelled: ${p.loan.toolName}`,\n    bodyText: `Hi ${p.recipient.name},\\n\\nThe pending request for ${p.loan.toolName} (${p.loan.startDate} to ${p.loan.endDate}) was cancelled by the borrower.`\n  }\n}];"
-      },
-      "id": "7",
-      "name": "Format: loan.cancelled",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [880, 460]
-    },
-    {
-      "parameters": {
-        "jsCode": "const p = $input.first().json.payload;\nreturn [{\n  json: {\n    to: p.recipient.email,\n    recipientName: p.recipient.name,\n    subject: `[LendLoop] Tool returned: ${p.loan.toolName}`,\n    bodyText: `Hi ${p.recipient.name},\\n\\n${p.loan.toolName} (${p.loan.startDate} to ${p.loan.endDate}) has been marked as returned. Thank you for participating in neighborhood tool sharing!`\n  }\n}];"
-      },
-      "id": "8",
-      "name": "Format: loan.returned",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [880, 580]
-    },
-    {
-      "parameters": {
-        "respondWith": "json",
-        "responseBody": "{\n  \"received\": true\n}",
+        },
         "options": {
-          "responseCode": 200
+          "fallbackOutput": "extra"
         }
       },
-      "id": "9",
-      "name": "Respond 200 Received",
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1.1,
-      "position": [1160, 340]
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.5,
+      "position": [
+        896,
+        0
+      ],
+      "id": "fb66a7b6-8097-4d8f-97da-6f51d4238c9a",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.body.ownerEmail }}",
+        "subject": "=New request for your {{ $json.body.loan.toolName }}",
+        "message": "=Hi {{ $json.body.loan.ownerName }},  {{ $json.body.loan.borrowerName }} has requested to borrow your {{ $json.body.loan.toolName }} from {{ $json.body.loan.startDate }} to {{ $json.body.loan.endDate }}.  Please log in to LendLoop to approve or decline this request.",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1152,
+        -64
+      ],
+      "id": "09451efb-c1b9-45c2-a099-023e2a1a7c7b",
+      "name": "Send a message",
+      "webhookId": "d8cbe877-0fc2-4f9a-a0cc-f98eb6ac1d20",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "seQw1W6jH8ilyPft",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.body.borrowerEmail }}",
+        "subject": "=Approved: You can borrow the {{ $json.body.loan.toolName }}",
+        "message": "=Hi {{ $json.body.loan.borrowerName }},\n\nGreat news! {{ $json.body.loan.ownerName }} has approved your request to borrow the {{ $json.body.loan.toolName }} from {{ $json.body.loan.startDate }} to {{ $json.body.loan.endDate }}. \n\nPlease coordinate with them to pick it up!",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1248,
+        80
+      ],
+      "id": "c0517828-9055-4451-aa81-5a1a69884b57",
+      "name": "Send a message1",
+      "webhookId": "d8cbe877-0fc2-4f9a-a0cc-f98eb6ac1d20",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "seQw1W6jH8ilyPft",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.body.borrowerEmail }}   ",
+        "subject": "=Request Declined: {{ $json.body.loan.toolName }}",
+        "message": "=Hi {{ $json.body.loan.borrowerName }},\n\nUnfortunately, {{ $json.body.loan.ownerName }} has declined your request to borrow the {{ $json.body.loan.toolName }} for the dates {{ $json.body.loan.startDate }} to {{ $json.body.loan.endDate }}.",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1392,
+        224
+      ],
+      "id": "3a9d55de-e8ce-40a0-a31d-9aa930b22660",
+      "name": "Send a message2",
+      "webhookId": "d8cbe877-0fc2-4f9a-a0cc-f98eb6ac1d20",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "seQw1W6jH8ilyPft",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.body.ownerEmail }}",
+        "subject": "=Cancelled: Request for your {{ $json.body.loan.toolName }}",
+        "message": "=Hi {{ $json.body.loan.ownerName }},\n\nJust a quick update: {{ $json.body.loan.borrowerName }} has cancelled their request to borrow your {{ $json.body.loan.toolName }}. No further action is needed on your end.",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1536,
+        368
+      ],
+      "id": "c1bf7e5b-a484-4c4f-afa7-71f3ebe72fa9",
+      "name": "Send a message3",
+      "webhookId": "d8cbe877-0fc2-4f9a-a0cc-f98eb6ac1d20",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "seQw1W6jH8ilyPft",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.body.borrowerEmail }}",
+        "subject": "=Returned: {{ $json.body.loan.toolName }}",
+        "message": "=Hi {{ $json.body.loan.borrowerName }},\n\n{{ $json.body.loan.ownerName }} has successfully marked the {{ $json.body.loan.toolName }} as returned. \n\nThanks for being a great neighbor and using LendLoop!",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1152,
+        336
+      ],
+      "id": "82ad3a93-2f79-41ca-8ee9-f994b9daf3f0",
+      "name": "Send a message4",
+      "webhookId": "d8cbe877-0fc2-4f9a-a0cc-f98eb6ac1d20",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "seQw1W6jH8ilyPft",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.body.recipientEmail }}",
+        "subject": "=New request for your {{ $json.body.loan.toolName }}",
+        "message": "=Hi {{ $json.body.loan.ownerName }},  {{ $json.body.loan.borrowerName }} has requested to borrow your {{ $json.body.loan.toolName }} from {{ $json.body.loan.startDate }} to {{ $json.body.loan.endDate }}.  Please log in to LendLoop to approve or decline this request.",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        944,
+        448
+      ],
+      "id": "6c5af44c-fa7a-4e78-840a-a485f90f0046",
+      "name": "Send a message5",
+      "webhookId": "d8cbe877-0fc2-4f9a-a0cc-f98eb6ac1d20",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "seQw1W6jH8ilyPft",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "action": "hmac",
+        "value": "={{ $json.canonical }}",
+        "dataPropertyName": "expectedHex"
+      },
+      "type": "n8n-nodes-base.crypto",
+      "typeVersion": 2,
+      "position": [
+        448,
+        0
+      ],
+      "id": "74993b70-c848-47a0-9633-850184199f51",
+      "name": "Crypto",
+      "credentials": {
+        "crypto": {
+          "id": "SB4aAhvM3XZKrO6K",
+          "name": "Crypto account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const headers = $('Webhook').item.json.headers;\nconst signatureHex = headers['x-signature'] || headers['X-Signature'];\nconst timestampStr = headers['x-timestamp'] || headers['X-Timestamp'];\nconst body = $('Webhook').item.json.body;\n\nif (!signatureHex || !timestampStr) {\n  throw new Error('Missing authentication headers.');\n}\n\nconst ts = Number(timestampStr);\nconst now = Math.floor(Date.now() / 1000);\n\nif (!Number.isFinite(ts) || Math.abs(now - ts) > 300) {\n  throw new Error('Webhook timestamp expired. Possible replay attack.');\n}\n\nconst method = 'POST';\nconst path = '/webhook/lendloop-loan-events';\nconst rawBody = JSON.stringify(body);\nconst canonical = `${ts}.${method}.${path}.${rawBody}`;\n\nreturn {\n  json: {\n    signatureHex,\n    canonical,\n  },\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        0
+      ],
+      "id": "e3ceb292-d1cb-4e05-b127-e409e12faeff",
+      "name": "Code in JavaScript1"
     }
   ],
+  "pinData": {},
   "connections": {
-    "Webhook Inbound": {
+    "Webhook": {
       "main": [
         [
           {
-            "node": "Verify HMAC Signature",
+            "node": "Code in JavaScript1",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Verify HMAC Signature": {
+    "Code in JavaScript": {
       "main": [
         [
           {
-            "node": "Route by Event Type",
+            "node": "Switch",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Route by Event Type": {
+    "Switch": {
       "main": [
         [
           {
-            "node": "Format: loan.requested",
+            "node": "Send a message",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Format: loan.approved",
+            "node": "Send a message1",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Format: loan.declined",
+            "node": "Send a message2",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Format: loan.cancelled",
+            "node": "Send a message3",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Format: loan.returned",
+            "node": "Send a message4",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a message5",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Format: loan.requested": {
+    "Crypto": {
       "main": [
         [
           {
-            "node": "Respond 200 Received",
+            "node": "Code in JavaScript",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Format: loan.approved": {
+    "Code in JavaScript1": {
       "main": [
         [
           {
-            "node": "Respond 200 Received",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Format: loan.declined": {
-      "main": [
-        [
-          {
-            "node": "Respond 200 Received",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Format: loan.cancelled": {
-      "main": [
-        [
-          {
-            "node": "Respond 200 Received",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Format: loan.returned": {
-      "main": [
-        [
-          {
-            "node": "Respond 200 Received",
+            "node": "Crypto",
             "type": "main",
             "index": 0
           }
@@ -245,8 +431,21 @@
       ]
     }
   },
+  "active": true,
   "settings": {
     "executionOrder": "v1",
-    "errorWorkflow": "LendLoop Error Handler"
-  }
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "ZmXj5e8lZeSCHYoc",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "d48d7c32-9fba-40d5-8278-9f04a0869ec0",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "75c6c8341342b4966fae2ab79c141231a51dc0276f6c760d4e0acc6ea8021e8a"
+  },
+  "nodeGroups": [],
+  "id": "5uQkacR8JuGL5ahg",
+  "tags": []
 }

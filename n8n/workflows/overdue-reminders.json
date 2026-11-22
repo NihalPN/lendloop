@@ -1,189 +1,250 @@
 {
-  "name": "LendLoop Overdue Reminders",
+  "name": "lendloop 2",
   "nodes": [
     {
       "parameters": {
         "rule": {
           "interval": [
             {
-              "field": "hours",
-              "hoursInterval": 24
+              "triggerAtHour": 9
             }
           ]
         }
       },
-      "id": "1",
-      "name": "Daily Schedule Trigger",
       "type": "n8n-nodes-base.scheduleTrigger",
-      "typeVersion": 1.2,
-      "position": [180, 300]
+      "typeVersion": 1.4,
+      "position": [
+        0,
+        0
+      ],
+      "id": "d0e76d90-4d2d-4e05-8820-c9b8b75eaed9",
+      "name": "Schedule Trigger"
     },
     {
       "parameters": {
-        "jsCode": "const crypto = require('crypto');\n\nconst secret = process.env.LENDLOOP_API_SECRET || process.env.N8N_API_SECRET || 'CHANGE_ME_N8N_API_SECRET';\nconst timestamp = Math.floor(Date.now() / 1000).toString();\nconst method = 'GET';\nconst path = '/overdue-loans?limit=100';\nconst rawBody = '';\n\nconst canonical = `${timestamp}.${method}.${path}.${rawBody}`;\nconst signature = crypto.createHmac('sha256', secret).update(canonical).digest('hex');\n\nconst baseUrl = process.env.CONVEX_SITE_URL || 'http://host.docker.internal:3211';\n\nreturn [{\n  json: {\n    url: `${baseUrl}${path}`,\n    headers: {\n      'Content-Type': 'application/json',\n      'X-LL-Timestamp': timestamp,\n      'X-LL-Signature': signature\n    }\n  }\n}];"
+        "jsCode": "const timestamp = Math.floor(Date.now() / 1000).toString();\nconst method = 'GET';\nconst path = '/overdue-loans'; // Must match the exact route path in convex/http.ts\nconst rawBody = ''; // GET requests have an empty body\n\nconst canonical = `${timestamp}.${method}.${path}.${rawBody}`;\n\nreturn [\n  {\n    json: {\n      timestamp,\n      path,\n      canonical,\n    },\n  },\n];"
       },
-      "id": "2",
-      "name": "Sign Overdue Request",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [400, 300]
+      "position": [
+        224,
+        0
+      ],
+      "id": "1d713107-0902-4e29-9424-0ce3765c9190",
+      "name": "Code in JavaScript"
     },
     {
       "parameters": {
-        "url": "={{ $json.url }}",
+        "url": "http://172.17.0.1:3211/overdue-loans",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
-              "name": "Content-Type",
-              "value": "application/json"
+              "name": "X-Timestamp",
+              "value": "={{ $json.timestamp }}"
             },
             {
-              "name": "X-LL-Timestamp",
-              "value": "={{ $json.headers['X-LL-Timestamp'] }}"
-            },
-            {
-              "name": "X-LL-Signature",
-              "value": "={{ $json.headers['X-LL-Signature'] }}"
+              "name": "X-Signature",
+              "value": "={{ $json.signature }}"
             }
           ]
         },
-        "options": {
-          "timeout": 10000
-        }
+        "options": {}
       },
-      "id": "3",
-      "name": "GET /overdue-loans",
       "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [620, 300]
+      "typeVersion": 4.5,
+      "position": [
+        672,
+        0
+      ],
+      "id": "2ceb1ecb-fb03-4ebb-b0b3-4708f78cca23",
+      "name": "HTTP Request"
     },
     {
       "parameters": {
-        "jsCode": "const response = $input.first().json;\nconst loans = Array.isArray(response.loans) ? response.loans : [];\n\nif (loans.length === 0) {\n  return [];\n}\n\nconst today = new Date().toISOString().slice(0, 10);\n\nreturn loans.map((loan) => ({\n  json: {\n    loanId: loan.loanId,\n    toolName: loan.toolName,\n    dueDate: loan.dueDate,\n    daysOverdue: loan.daysOverdue,\n    borrowerEmail: loan.borrower ? loan.borrower.email : 'neighbor@example.com',\n    borrowerName: loan.borrower ? loan.borrower.name : 'Neighbor',\n    runDate: today,\n    idempotencyKey: `${loan.loanId}:${today}`\n  }\n}));"
+        "sendTo": "={{ $json.borrowerEmail }}",
+        "subject": "=Overdue Reminder: {{ $json.toolName }}",
+        "message": "=Hi {{ $json.borrowerName }},  This is a friendly reminder that your loan for the {{ $json.toolName }} was due on {{ $json.endDate }}.   Please coordinate with the owner to return it as soon as possible!",
+        "options": {}
       },
-      "id": "4",
-      "name": "Unpack Overdue Loans",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [840, 300]
-    },
-    {
-      "parameters": {
-        "jsCode": "const item = $input.first().json;\nreturn [{\n  json: {\n    ...item,\n    emailNotification: {\n      to: item.borrowerEmail,\n      subject: `[LendLoop Reminder] Return tool: ${item.toolName}`,\n      body: `Hi ${item.borrowerName},\\n\\nThis is a friendly reminder that your loan for ${item.toolName} was due on ${item.dueDate} (${item.daysOverdue} days overdue).\\n\\nPlease return it to the owner as soon as possible so other neighbors can use it.`\n    }\n  }\n}];"
-      },
-      "id": "5",
-      "name": "Format Reminder Notification",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [1060, 300]
-    },
-    {
-      "parameters": {
-        "jsCode": "const crypto = require('crypto');\n\nconst secret = process.env.LENDLOOP_API_SECRET || process.env.N8N_API_SECRET || 'CHANGE_ME_N8N_API_SECRET';\nconst item = $input.first().json;\n\nconst timestamp = Math.floor(Date.now() / 1000).toString();\nconst method = 'POST';\nconst path = '/reminder-result';\n\nconst payload = {\n  contractVersion: 'v1',\n  idempotencyKey: item.idempotencyKey,\n  loanId: item.loanId,\n  status: 'sent',\n  channel: 'email',\n  sentAt: new Date().toISOString(),\n  error: null\n};\n\nconst rawBody = JSON.stringify(payload);\nconst canonical = `${timestamp}.${method}.${path}.${rawBody}`;\nconst signature = crypto.createHmac('sha256', secret).update(canonical).digest('hex');\nconst baseUrl = process.env.CONVEX_SITE_URL || 'http://host.docker.internal:3211';\n\nreturn [{\n  json: {\n    url: `${baseUrl}${path}`,\n    body: payload,\n    rawBody,\n    headers: {\n      'Content-Type': 'application/json',\n      'X-LL-Timestamp': timestamp,\n      'X-LL-Signature': signature\n    }\n  }\n}];"
-      },
-      "id": "6",
-      "name": "Sign Reminder Result",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [1280, 300]
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        896,
+        0
+      ],
+      "id": "c7c6bae4-e228-4c01-b4f0-da6311b56900",
+      "name": "Send a message",
+      "webhookId": "00e48bcc-33f9-4fc3-8d6f-58f54b2cfd25",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "seQw1W6jH8ilyPft",
+          "name": "Gmail account"
+        }
+      }
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $json.url }}",
+        "url": "http://172.17.0.1:3211/reminder-result",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
-              "name": "Content-Type",
-              "value": "application/json"
+              "name": "x-timestamp",
+              "value": "={{ $json.timestamp }}"
             },
             {
-              "name": "X-LL-Timestamp",
-              "value": "={{ $json.headers['X-LL-Timestamp'] }}"
-            },
-            {
-              "name": "X-LL-Signature",
-              "value": "={{ $json.headers['X-LL-Signature'] }}"
+              "name": "x-signature",
+              "value": "={{ $json.signature }}"
             }
           ]
         },
         "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json.body) }}",
-        "options": {
-          "timeout": 10000
-        }
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.rawBody }}",
+        "options": {}
       },
-      "id": "7",
-      "name": "POST /reminder-result",
       "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [1500, 300]
+      "typeVersion": 4.5,
+      "position": [
+        1568,
+        0
+      ],
+      "id": "f698215e-2acf-44b8-b72f-75c1739afbaa",
+      "name": "HTTP Request1"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const loan = $('HTTP Request').item.json;\nconst loanId = loan.loanId ?? loan._id;\n\nif (!loanId) {\n  throw new Error('Missing loanId from HTTP Request node.');\n}\n\nconst todayUtc = new Date().toISOString().slice(0, 10);\nconst payload = {\n  loanId,\n  idempotencyKey: `${loanId}:${todayUtc}`,\n  status: 'sent',\n};\n\nconst rawBody = JSON.stringify(payload);\nconst ts = String(Math.floor(Date.now() / 1000));\nconst method = 'POST';\nconst path = '/reminder-result';\nconst canonical = `${ts}.${method}.${path}.${rawBody}`;\n\nreturn {\n  json: {\n    rawBody,\n    timestamp: ts,\n    canonical,\n  },\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1136,
+        0
+      ],
+      "id": "266ddbdf-021e-4ffb-9335-d58cd00e0357",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "action": "hmac",
+        "value": "={{ $json.canonical }}",
+        "dataPropertyName": "signature"
+      },
+      "type": "n8n-nodes-base.crypto",
+      "typeVersion": 2,
+      "position": [
+        1360,
+        0
+      ],
+      "id": "3728a96d-9e59-4f10-b442-61a5820cd2f5",
+      "name": "Crypto",
+      "credentials": {
+        "crypto": {
+          "id": "SB4aAhvM3XZKrO6K",
+          "name": "Crypto account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "action": "hmac",
+        "value": "={{ $json.canonical }}",
+        "dataPropertyName": "signature"
+      },
+      "type": "n8n-nodes-base.crypto",
+      "typeVersion": 2,
+      "position": [
+        448,
+        0
+      ],
+      "id": "8ee7eaf0-99d4-4c1f-9ee5-ae724b819f47",
+      "name": "Crypto1",
+      "credentials": {
+        "crypto": {
+          "id": "SB4aAhvM3XZKrO6K",
+          "name": "Crypto account"
+        }
+      }
     }
   ],
+  "pinData": {},
   "connections": {
-    "Daily Schedule Trigger": {
+    "Schedule Trigger": {
       "main": [
         [
           {
-            "node": "Sign Overdue Request",
+            "node": "Code in JavaScript",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Sign Overdue Request": {
+    "Code in JavaScript": {
       "main": [
         [
           {
-            "node": "GET /overdue-loans",
+            "node": "Crypto1",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "GET /overdue-loans": {
+    "HTTP Request": {
       "main": [
         [
           {
-            "node": "Unpack Overdue Loans",
+            "node": "Send a message",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Unpack Overdue Loans": {
+    "Send a message": {
       "main": [
         [
           {
-            "node": "Format Reminder Notification",
+            "node": "Code in JavaScript1",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Format Reminder Notification": {
+    "Code in JavaScript1": {
       "main": [
         [
           {
-            "node": "Sign Reminder Result",
+            "node": "Crypto",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Sign Reminder Result": {
+    "Crypto": {
       "main": [
         [
           {
-            "node": "POST /reminder-result",
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Crypto1": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
             "type": "main",
             "index": 0
           }
@@ -191,8 +252,17 @@
       ]
     }
   },
+  "active": true,
   "settings": {
     "executionOrder": "v1",
-    "errorWorkflow": "LendLoop Error Handler"
-  }
+    "binaryMode": "separate"
+  },
+  "versionId": "a26bd4b9-4921-4c56-8d55-90fa4a30c1d0",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "75c6c8341342b4966fae2ab79c141231a51dc0276f6c760d4e0acc6ea8021e8a"
+  },
+  "nodeGroups": [],
+  "id": "Xw9c3Hgq03qZwXc9",
+  "tags": []
 }

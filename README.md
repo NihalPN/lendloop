@@ -147,7 +147,7 @@ lendloop/
 Clone the repository, install dependencies, and create your local environment file:
 
 ```bash
-git clone <repo-url> lendloop
+git clone https://github.com/NihalPN/lendloop.git lendloop
 cd lendloop
 npm install
 cp .env.example .env.local
