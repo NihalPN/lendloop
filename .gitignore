@@ -55,3 +55,27 @@ convex/_generated/ai/
 # AI agent skills & locks
 .agents/
 skills-lock.json
+
+# Convex local backend binary & local state
+.convex/
+convex-local-backend*
+.convex-local-backend*
+
+# Next.js & build caches
+.next/
+out/
+
+# n8n local runtime volume data
+n8n_data/
+.n8n/# Convex local backend binary & local state
+.convex/
+convex-local-backend*
+.convex-local-backend*
+
+# Next.js & build caches
+.next/
+out/
+
+# n8n local runtime volume data
+n8n_data/
+.n8n/
